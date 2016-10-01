@@ -25,6 +25,7 @@ from ..base import BaseEstimator, is_classifier, clone
 from ..base import MetaEstimatorMixin
 from ._split import check_cv
 from ._validation import _fit_and_score
+from ._validation import _aggregate_score_dicts
 from ..exceptions import NotFittedError
 from ..externals.joblib import Parallel, delayed
 from ..externals import six
@@ -423,6 +424,9 @@ class BaseSearchCV(six.with_metaclass(ABCMeta, BaseEstimator,
             raise ValueError("No score function explicitly defined, "
                              "and the estimator doesn't provide one %s"
                              % self.best_estimator_)
+        elif self.multimetric_:
+            raise ValueError("score function is not be available for"
+                             " multimetric scoring.")
         return self.scorer_(self.best_estimator_, X, y)
 
     def _check_is_fitted(self, method_name):
@@ -449,6 +453,9 @@ class BaseSearchCV(six.with_metaclass(ABCMeta, BaseEstimator,
 
         """
         self._check_is_fitted('predict')
+        if self.multimetric_:
+            raise ValueError("predict is not be available for"
+                             " multimetric scoring.")
         return self.best_estimator_.predict(X)
 
     @if_delegate_has_method(delegate=('best_estimator_', 'estimator'))
@@ -466,6 +473,9 @@ class BaseSearchCV(six.with_metaclass(ABCMeta, BaseEstimator,
 
         """
         self._check_is_fitted('predict_proba')
+        if self.multimetric_:
+            raise ValueError("predict_proba is not be available for"
+                             " multimetric scoring.")
         return self.best_estimator_.predict_proba(X)
 
     @if_delegate_has_method(delegate=('best_estimator_', 'estimator'))
@@ -483,6 +493,9 @@ class BaseSearchCV(six.with_metaclass(ABCMeta, BaseEstimator,
 
         """
         self._check_is_fitted('predict_log_proba')
+        if self.multimetric_:
+            raise ValueError("predict_log_proba is not be available for"
+                             " multimetric scoring.")
         return self.best_estimator_.predict_log_proba(X)
 
     @if_delegate_has_method(delegate=('best_estimator_', 'estimator'))
@@ -500,6 +513,9 @@ class BaseSearchCV(six.with_metaclass(ABCMeta, BaseEstimator,
 
         """
         self._check_is_fitted('decision_function')
+        if self.multimetric_:
+            raise ValueError("decision_function is not be available for"
+                             " multimetric scoring.")
         return self.best_estimator_.decision_function(X)
 
     @if_delegate_has_method(delegate=('best_estimator_', 'estimator'))
@@ -517,6 +533,9 @@ class BaseSearchCV(six.with_metaclass(ABCMeta, BaseEstimator,
 
         """
         self._check_is_fitted('transform')
+        if self.multimetric_:
+            raise ValueError("transform is not be available for"
+                             " multimetric scoring.")
         return self.best_estimator_.transform(X)
 
     @if_delegate_has_method(delegate=('best_estimator_', 'estimator'))
@@ -534,6 +553,9 @@ class BaseSearchCV(six.with_metaclass(ABCMeta, BaseEstimator,
 
         """
         self._check_is_fitted('inverse_transform')
+        if self.multimetric_:
+            raise ValueError("inverse_transform is not be available for"
+                             " multimetric scoring.")
         return self.best_estimator_.transform(Xt)
 
     def fit(self, X, y=None, groups=None):
@@ -557,9 +579,8 @@ class BaseSearchCV(six.with_metaclass(ABCMeta, BaseEstimator,
         estimator = self.estimator
         cv = check_cv(self.cv, y, classifier=is_classifier(estimator))
 
-        self.scorer_ = check_multimetric_scoring(self.estimator,
-                                                  scoring=self.scoring)
-        multimetric = False if len(list(self.scorer_.keys())) == 1 else True
+        self.scorer_, self.multimetric_ = check_multimetric_scoring(
+            self.estimator, scoring=self.scoring)
 
         X, y, groups = indexable(X, y, groups)
         n_splits = cv.get_n_splits(X, y, groups)
@@ -598,21 +619,9 @@ class BaseSearchCV(six.with_metaclass(ABCMeta, BaseEstimator,
         candidate_params = parameters[::n_splits]
         n_candidates = len(candidate_params)
 
-        # The train_scores and test_scores will be a list of dict
-        # of form [{'prec': 0.1, 'acc':1.0}, {'prec': 0.1, 'acc':1.0}, ...]
-        # Convert that to a dict of array {'prec': np.array([0.1 ...]), ...}
-        def _to_dict_of_scores_array(scores):
-            # It will be reshaped into (n_candidates, n_splits) in _store()
-            np_empty = partial(np.empty, shape=((n_candidates * n_splits,)))
-            scores_arr = defaultdict(np_empty)
-            for i, score_dict_i in enumerate(scores):
-                for key in self.scorer_.keys():
-                    scores_arr[key][i] = score_dict_i[key]
-            return dict(scores_arr)
-
-        test_scores = _to_dict_of_scores_array(test_score_dicts)
+        test_scores = _aggregate_score_dicts(test_score_dicts)
         if self.return_train_score:
-            train_scores = _to_dict_of_scores_array(train_score_dicts)
+            train_scores = _aggregate_score_dicts(train_score_dicts)
 
         results = dict()
 
@@ -691,6 +700,12 @@ class BaseSearchCV(six.with_metaclass(ABCMeta, BaseEstimator,
                 else:
                     best_estimator.fit(X, **self.fit_params)
                 self.best_estimator_[scorer_name] = best_estimator
+
+        if not self.multimetric_:
+            if self.refit:
+                self.best_estimator_ = list(self.best_estimator_.values())[0]
+            self.best_index_ = list(self.best_index_.values())[0]
+            self.scorer_ = list(self.scorer_.values())[0]
 
         self.cv_results_ = results
         self.n_splits_ = n_splits
