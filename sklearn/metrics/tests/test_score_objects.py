@@ -199,7 +199,7 @@ def test_check_scoring_and_check_multimetric_scoring():
                      'precision': make_scorer(precision_score)}):
         estimator = EstimatorWithFitAndPredict()
         estimator.fit([[1]], [1])
-        
+
         scorers, is_multi = check_multimetric_scoring(estimator, scoring)
         assert_true(is_multi)
         assert_true(isinstance(scorers, dict))
