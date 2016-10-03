@@ -8,7 +8,7 @@ from functools import update_wrapper
 import numpy as np
 from ..utils import safe_indexing
 
-__all__ = ['if_delegate_has_method', 'if_not_multimetric_scoring']
+__all__ = ['if_delegate_has_method']
 
 
 class _IffHasAttrDescriptor(object):
