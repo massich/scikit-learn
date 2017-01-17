@@ -23,7 +23,8 @@ from sklearn.metrics import (f1_score, r2_score, roc_auc_score, fbeta_score,
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import cluster
 from sklearn.metrics.scorer import check_scoring
-from sklearn.metrics.scorer import check_multimetric_scoring
+from sklearn.metrics.scorer import (
+    _check_multimetric_scoring as check_multimetric_scoring)
 from sklearn.metrics.scorer import _passthrough_scorer
 from sklearn.metrics.scorer import _PredictScorer
 from sklearn.metrics import make_scorer, get_scorer, SCORERS
