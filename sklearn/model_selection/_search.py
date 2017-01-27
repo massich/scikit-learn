@@ -775,7 +775,7 @@ class GridSearchCV(BaseSearchCV):
         value. Single scorers returning a list/array of values may be wrapped
         into multiple scorers that return one value each.
 
-        If None the estimator's default scorer, if available is used.
+        If None, the estimator's default scorer, if available, is used.
 
     fit_params : dict, optional
         Parameters to pass to the fit method.
