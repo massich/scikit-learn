@@ -545,7 +545,12 @@ class BaseSearchCV(six.with_metaclass(ABCMeta, BaseEstimator,
         self._check_is_fitted('inverse_transform')
         return self.best_estimator_.transform(Xt)
 
-    def fit(self, X, y=None, groups=None):
+    @property
+    def classes_(self):
+        self._check_is_fitted("classes_")
+        return self.best_estimator_.classes_
+
+    def fit(self, X, y=None, groups=None, **fit_params):
         """Run fit with all sets of parameters.
 
         Parameters
@@ -562,7 +567,21 @@ class BaseSearchCV(six.with_metaclass(ABCMeta, BaseEstimator,
         groups : array-like, with shape (n_samples,), optional
             Group labels for the samples used while splitting the dataset into
             train/test set.
+
+        **fit_params : dict of string -> object
+            Parameters passed to the ``fit`` method of the estimator
         """
+        if self.fit_params:
+            warnings.warn('"fit_params" as a constructor argument was '
+                          'deprecated in version 0.19 and will be removed '
+                          'in version 0.21. Pass fit parameters to the '
+                          '"fit" method instead.', DeprecationWarning)
+            if fit_params:
+                warnings.warn('Ignoring fit_params passed as a constructor '
+                              'argument in favor of keyword arguments to '
+                              'the "fit" method.', RuntimeWarning)
+            else:
+                fit_params = self.fit_params
         estimator = self.estimator
         cv = check_cv(self.cv, y, classifier=is_classifier(estimator))
 
@@ -604,7 +623,7 @@ class BaseSearchCV(six.with_metaclass(ABCMeta, BaseEstimator,
             pre_dispatch=pre_dispatch
         )(delayed(_fit_and_score)(clone(base_estimator), X, y, self.scorer_,
                                   train, test, self.verbose, parameters,
-                                  fit_params=self.fit_params,
+                                  fit_params=fit_params,
                                   return_train_score=self.return_train_score,
                                   return_n_test_samples=True,
                                   return_times=True, return_parameters=False,
@@ -779,9 +798,6 @@ class GridSearchCV(BaseSearchCV):
         into multiple scorers that return one value each.
 
         If None, the estimator's default scorer, if available, is used.
-
-    fit_params : dict, optional
-        Parameters to pass to the fit method.
 
     n_jobs : int, default=1
         Number of jobs to run in parallel.
@@ -1071,9 +1087,6 @@ class RandomizedSearchCV(BaseSearchCV):
         a scorer callable object / function with signature
         ``scorer(estimator, X, y)``.
         If ``None``, the ``score`` method of the estimator is used.
-
-    fit_params : dict, optional
-        Parameters to pass to the fit method.
 
     n_jobs : int, default=1
         Number of jobs to run in parallel.
