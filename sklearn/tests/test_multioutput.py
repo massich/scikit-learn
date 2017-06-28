@@ -6,6 +6,7 @@ from sklearn.utils.testing import assert_almost_equal
 from sklearn.utils.testing import assert_raises
 from sklearn.utils.testing import assert_false
 from sklearn.utils.testing import assert_raises_regex
+from sklearn.utils.testing import assert_raise_message
 from sklearn.utils.testing import assert_array_equal
 from sklearn.utils.testing import assert_equal
 from sklearn.utils.testing import assert_not_equal
@@ -49,24 +50,24 @@ def test_multi_target_regression_partial_fit():
     references = np.zeros_like(y_test)
     half_index = 25
     for n in range(3):
-        sgr = SGDRegressor(random_state=0)
+        sgr = SGDRegressor(random_state=0, max_iter=5)
         sgr.partial_fit(X_train[:half_index], y_train[:half_index, n])
         sgr.partial_fit(X_train[half_index:], y_train[half_index:, n])
         references[:, n] = sgr.predict(X_test)
 
-    sgr = MultiOutputRegressor(SGDRegressor(random_state=0))
+    sgr = MultiOutputRegressor(SGDRegressor(random_state=0, max_iter=5))
 
     sgr.partial_fit(X_train[:half_index], y_train[:half_index])
     sgr.partial_fit(X_train[half_index:], y_train[half_index:])
 
     y_pred = sgr.predict(X_test)
     assert_almost_equal(references, y_pred)
+    assert_false(hasattr(MultiOutputRegressor(Lasso), 'partial_fit'))
 
 
 def test_multi_target_regression_one_target():
     # Test multi target regression raises
     X, y = datasets.make_regression(n_targets=1)
-
     rgr = MultiOutputRegressor(GradientBoostingRegressor(random_state=0))
     assert_raises(ValueError, rgr.fit, X, y)
 
@@ -107,12 +108,12 @@ def test_multi_target_sample_weight_partial_fit():
     X = [[1, 2, 3], [4, 5, 6]]
     y = [[3.141, 2.718], [2.718, 3.141]]
     w = [2., 1.]
-    rgr_w = MultiOutputRegressor(SGDRegressor(random_state=0))
+    rgr_w = MultiOutputRegressor(SGDRegressor(random_state=0, max_iter=5))
     rgr_w.partial_fit(X, y, w)
 
     # weighted with different weights
     w = [2., 2.]
-    rgr = MultiOutputRegressor(SGDRegressor(random_state=0))
+    rgr = MultiOutputRegressor(SGDRegressor(random_state=0, max_iter=5))
     rgr.partial_fit(X, y, w)
 
     assert_not_equal(rgr.predict(X)[0][0], rgr_w.predict(X)[0][0])
@@ -151,7 +152,7 @@ classes = list(map(np.unique, (y1, y2, y3)))
 
 
 def test_multi_output_classification_partial_fit_parallelism():
-    sgd_linear_clf = SGDClassifier(loss='log', random_state=1)
+    sgd_linear_clf = SGDClassifier(loss='log', random_state=1, max_iter=5)
     mor = MultiOutputClassifier(sgd_linear_clf, n_jobs=-1)
     mor.partial_fit(X, y, classes)
     est1 = mor.estimators_[0]
@@ -165,7 +166,7 @@ def test_multi_output_classification_partial_fit():
     # test if multi_target initializes correctly with base estimator and fit
     # assert predictions work as expected for predict
 
-    sgd_linear_clf = SGDClassifier(loss='log', random_state=1)
+    sgd_linear_clf = SGDClassifier(loss='log', random_state=1, max_iter=5)
     multi_target_linear = MultiOutputClassifier(sgd_linear_clf)
 
     # train the multi_target_linear and also get the predictions.
@@ -193,7 +194,7 @@ def test_multi_output_classification_partial_fit():
 
 
 def test_mutli_output_classifiation_partial_fit_no_first_classes_exception():
-    sgd_linear_clf = SGDClassifier(loss='log', random_state=1)
+    sgd_linear_clf = SGDClassifier(loss='log', random_state=1, max_iter=5)
     multi_target_linear = MultiOutputClassifier(sgd_linear_clf)
     assert_raises_regex(ValueError, "classes must be passed on the first call "
                                     "to partial_fit.",
@@ -310,14 +311,14 @@ def test_multi_output_classification_partial_fit_sample_weights():
     Xw = [[1, 2, 3], [4, 5, 6], [1.5, 2.5, 3.5]]
     yw = [[3, 2], [2, 3], [3, 2]]
     w = np.asarray([2., 1., 1.])
-    sgd_linear_clf = SGDClassifier(random_state=1)
+    sgd_linear_clf = SGDClassifier(random_state=1, max_iter=5)
     clf_w = MultiOutputClassifier(sgd_linear_clf)
     clf_w.fit(Xw, yw, w)
 
     # unweighted, but with repeated samples
     X = [[1, 2, 3], [1, 2, 3], [4, 5, 6], [1.5, 2.5, 3.5]]
     y = [[3, 2], [3, 2], [2, 3], [3, 2]]
-    sgd_linear_clf = SGDClassifier(random_state=1)
+    sgd_linear_clf = SGDClassifier(random_state=1, max_iter=5)
     clf = MultiOutputClassifier(sgd_linear_clf)
     clf.fit(X, y)
     X_test = [[1.5, 2.5, 3.5]]
@@ -336,3 +337,5 @@ def test_multi_output_exceptions():
     y_new = np.column_stack((y1, y2))
     moc.fit(X, y)
     assert_raises(ValueError, moc.score, X, y_new)
+    # ValueError when y is continuous
+    assert_raise_message(ValueError, "Unknown label type", moc.fit, X, X[:, 1])

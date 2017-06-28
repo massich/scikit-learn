@@ -88,7 +88,7 @@ class RBFSampler(BaseEstimator, TransformerMixin):
                                                    size=self.n_components)
         return self
 
-    def transform(self, X, y=None):
+    def transform(self, X):
         """Apply the approximate feature map to X.
 
         Parameters
@@ -178,14 +178,15 @@ class SkewedChi2Sampler(BaseEstimator, TransformerMixin):
                                                    size=self.n_components)
         return self
 
-    def transform(self, X, y=None):
+    def transform(self, X):
         """Apply the approximate feature map to X.
 
         Parameters
         ----------
         X : array-like, shape (n_samples, n_features)
             New data, where n_samples in the number of samples
-            and n_features is the number of features.
+            and n_features is the number of features. All values of X must be
+            strictly greater than "-skewedness".
 
         Returns
         -------
@@ -195,8 +196,9 @@ class SkewedChi2Sampler(BaseEstimator, TransformerMixin):
 
         X = as_float_array(X, copy=True)
         X = check_array(X, copy=False)
-        if (X < 0).any():
-            raise ValueError("X may not contain entries smaller than zero.")
+        if (X <= -self.skewedness).any():
+            raise ValueError("X may not contain entries smaller than"
+                             " -skewedness.")
 
         X += self.skewedness
         np.log(X, X)
@@ -276,7 +278,7 @@ class AdditiveChi2Sampler(BaseEstimator, TransformerMixin):
             self.sample_interval_ = self.sample_interval
         return self
 
-    def transform(self, X, y=None):
+    def transform(self, X):
         """Apply approximate feature map to X.
 
         Parameters
@@ -483,7 +485,7 @@ class Nystroem(BaseEstimator, TransformerMixin):
         # sqrt of kernel matrix on basis vectors
         U, S, V = svd(basis_kernel)
         S = np.maximum(S, 1e-12)
-        self.normalization_ = np.dot(U * 1. / np.sqrt(S), V)
+        self.normalization_ = np.dot(U / np.sqrt(S), V)
         self.components_ = basis
         self.component_indices_ = inds
         return self
