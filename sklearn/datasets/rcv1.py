@@ -22,35 +22,33 @@ from .svmlight_format import load_svmlight_files
 from ..utils import shuffle as shuffle_
 from ..utils import Bunch
 
+from collections import namedtuple
 
-FILE_NAMES = [
-    "lyrl2004_vectors_test_pt0.dat.gz",
-    "lyrl2004_vectors_test_pt1.dat.gz",
-    "lyrl2004_vectors_test_pt2.dat.gz",
-    "lyrl2004_vectors_test_pt3.dat.gz",
-    "lyrl2004_vectors_train.dat.gz"
+
+Fetcher = namedtuple('Fetcher', ['path', 'url', 'checksum'])
+
+TARGET = [
+    Fetcher("lyrl2004_vectors_test_pt0.dat.gz",
+            'https://ndownloader.figshare.com/files/5976069',
+            'cc918f2d1b6d6c44c68693e99ff72f84'),
+
+    Fetcher("lyrl2004_vectors_test_pt1.dat.gz",
+            'https://ndownloader.figshare.com/files/5976066',
+            '904a9e58fff311e888871fa20860bd72'),
+
+    Fetcher("lyrl2004_vectors_test_pt2.dat.gz",
+            'https://ndownloader.figshare.com/files/5976063',
+            '94175b6c28f5a25e345911aaebbb1eef'),
+
+    Fetcher("lyrl2004_vectors_test_pt3.dat.gz",
+            'https://ndownloader.figshare.com/files/5976060',
+            'b68c8406241a9a7b530840faa99ad0ff'),
+
+    Fetcher("lyrl2004_vectors_train.dat.gz",
+            'https://ndownloader.figshare.com/files/5976057',
+            '9fabc46abbdd6fd84a0803d837b10bde')
 ]
 
-FILE_URLS = [
-    'https://ndownloader.figshare.com/files/5976069',
-    'https://ndownloader.figshare.com/files/5976066',
-    'https://ndownloader.figshare.com/files/5976063',
-    'https://ndownloader.figshare.com/files/5976060',
-    'https://ndownloader.figshare.com/files/5976057'
-]
-
-FILE_CHECKSUMS = {
-    "lyrl2004_vectors_test_pt0.dat.gz":
-    'cc918f2d1b6d6c44c68693e99ff72f84',
-    "lyrl2004_vectors_test_pt1.dat.gz":
-    '904a9e58fff311e888871fa20860bd72',
-    "lyrl2004_vectors_test_pt2.dat.gz":
-    '94175b6c28f5a25e345911aaebbb1eef',
-    "lyrl2004_vectors_test_pt3.dat.gz":
-    'b68c8406241a9a7b530840faa99ad0ff',
-    "lyrl2004_vectors_train.dat.gz":
-    '9fabc46abbdd6fd84a0803d837b10bde'
-}
 
 URL_topics = 'https://ndownloader.figshare.com/files/5976048'
 
@@ -146,15 +144,14 @@ def fetch_rcv1(data_home=None, subset='all', download_if_missing=True,
     if download_if_missing and (not exists(samples_path) or
                                 not exists(sample_id_path)):
         files = []
-        for file_name, file_url, expected_archive_checksum in zip(
-                FILE_NAMES, FILE_URLS, FILE_CHECKSUMS.values()):
+        for file_name, file_url, expected_archive_checksum in TARGET:
             logger.warning("Downloading %s" % file_url)
             archive_path = join(rcv1_dir, file_name)
             _fetch_url(file_url, archive_path, expected_archive_checksum)
             files.append(GzipFile(filename=archive_path))
 
         # delete archives
-        for file_name in FILE_NAMES:
+        for file_name, _, _ in TARGET:
             remove(join(rcv1_dir, file_name))
 
         Xy = load_svmlight_files(files, n_features=N_FEATURES)
