@@ -21,6 +21,8 @@ from .base import \
 from ..base import ClassifierMixin
 from ..utils import check_array
 
+import pdb
+
 
 class KNeighborsClassifier(NeighborsBase, KNeighborsMixin,
                            SupervisedIntegerMixin, ClassifierMixin):
@@ -391,7 +393,8 @@ class RadiusNeighborsClassifier(NeighborsBase, RadiusNeighborsMixin,
                                         for ind in neigh_ind[inliers]],
                                        dtype=object)
                 y_pred_k = np.zeros(n_samples, dtype=np.int)
-                mode = self._mode(pred_labels, weights, inliers)
+                mode = self._mode(pred_labels, weights, inliers,
+                                  is_comming_from_sparse_call=True)
                 y_pred_k[inliers] = mode
 
                 if outliers and self.outlier_label != 0:
@@ -419,11 +422,14 @@ class RadiusNeighborsClassifier(NeighborsBase, RadiusNeighborsMixin,
 
         return y_pred
 
-    def _mode(self, pred_labels, weights, inliers):
+    def _mode(self, pred_labels, weights, inliers,
+              is_comming_from_sparse_call=None):
         if weights is None:
             mode = np.array([stats.mode(pl)[0]
                              for pl in pred_labels], dtype=np.int)
         else:
+            if is_comming_from_sparse_call:
+                pdb.set_trace()
             mode = np.array([weighted_mode(pl, w)[0]
                              for (pl, w)
                              in zip(pred_labels, weights[inliers])],
